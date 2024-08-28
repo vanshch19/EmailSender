@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Sender</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/css/send.css}">
+</head>
+<body>
+
+    <!-- Include the navbar fragment -->
+    <div th:replace="partials/navbar :: navbar"></div>
+
+    
+    <div class="container mt-4">
+        <h1>Messages</h1>
+        <form id="emailForm">
+            <div class="mb-3">
+                <label for="distributionList" class="form-label">Select distribution list:</label>
+                <select id="distributionList" name="distributionList" class="form-select">
+                    <option value="choose a Collection" selected>Choose a Collection</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="segmentList" class="form-label">You may also send your mailing only to a segment of the list:</label>
+                <select id="segmentList" name="segmentList" class="form-select">
+                    <option selected>None (whole list)</option>
+                    <!-- Other options can be added here -->
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="senderEmail" class="form-label">Sender e-mail address:</label>
+                <input type="email" id="senderEmail" name="senderEmail" class="form-control" value="newsletter@testsendblaster.com">
+            </div>
+            <div class="mb-3">
+                <label for="senderName" class="form-label">Sender name:</label>
+                <input type="text" id="senderName" name="senderName" class="form-control" value="Newsletter">
+            </div>
+
+            <!-- Time Interval Input with Unit Selection -->
+            <div class="mb-3">
+                <label for="sendInterval" class="form-label">Send Interval:</label>
+                <div class="d-flex">
+                    <input type="number" id="sendInterval" name="sendInterval" class="form-control me-2" placeholder="Enter interval" min="1" step="1">
+                    <select id="timeUnit" name="timeUnit" class="form-select">
+                        <option value="seconds">Seconds</option>
+                        <option value="minutes" selected>Minutes</option>
+                        <option value="hours">Hours</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <button type="button" id="sendButton" class="btn btn-primary">Send</button>
+                <button type="button" class="btn btn-secondary">Send later...</button>
+            </div>
+            <h2>Send settings</h2>
+            <div class="mb-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="sendMode" id="smtpMode" value="smtp" checked>
+                    <label class="form-check-label" for="smtpMode">
+                        Use SMTP server
+                    </label>
+                </div>
+                <div class="mb-3">
+                    <label for="smtpServer" class="form-label">SMTP server:</label>
+                    <input type="text" id="smtpServer" name="smtpServer" class="form-control" value="test.turbo-smtp.com">
+                </div>
+                <div class="mb-3 form-check">
+                    <input class="form-check-input" type="checkbox" id="authenticationRequired" name="authenticationRequired">
+                    <label class="form-check-label" for="authenticationRequired">
+                        Authentication required
+                    </label>
+                </div>
+                <div class="mb-3">
+                    <label for="username" class="form-label">Username:</label>
+                    <input type="text" id="username" name="username" class="form-control" value="demo">
+                </div>
+                <div class="mb-3">
+                    <label for="password" class="form-label">Password:</label>
+                    <input type="password" id="password" name="password" class="form-control" value="password">
+                </div>
+                <div class="mb-3">
+                    <label for="port" class="form-label">Port:</label>
+                    <input type="text" id="port" name="port" class="form-control" value="465">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="ssl" name="ssl" checked>
+                        <label class="form-check-label" for="ssl">
+                            SSL
+                        </label>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-info">Connection test</button>
+            </div>
+            <div class="mb-3 form-check">
+                <input class="form-check-input" type="radio" name="sendMode" id="directSendMode" value="direct">
+                <label class="form-check-label" for="directSendMode">
+                    Direct send
+                </label>
+            </div>
+        </form>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loadingModalLabel">Processing</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    Please wait while we process your request...
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script th:src="@{/js/smtp.js}"></script>
+</body>
+</html>

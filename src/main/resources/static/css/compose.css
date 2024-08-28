@@ -1,0 +1,341 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+::after,
+::before {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+a {
+    text-decoration: none;
+}
+
+li {
+    list-style: none;
+}
+
+h1 {
+    font-weight: 600;
+    font-size: 1.5rem;
+}
+
+body {
+    font-family: 'Poppins', sans-serif;
+}
+
+.wrapper {
+    display: flex;
+    min-height: 100vh; /* Ensure the sidebar and content cover the full height */
+}
+
+.main {
+  min-height: 100vh;
+  width: 100%;
+  overflow: hidden;
+  transition: all 0.35s ease-in-out;
+  background-color: #fafbfe;
+}
+
+#sidebar {
+    width: 70px;
+    min-width: 70px;
+    z-index: 1000;
+    transition: all .25s ease-in-out;
+    background-color: #0e2238;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#sidebar.expand {
+    width: 200px;
+    min-width: 200px;
+}
+
+.toggle-btn {
+    background-color: transparent;
+    cursor: pointer;
+    border: 0;
+    padding: 1rem 1.5rem;
+}
+
+.toggle-btn i {
+    font-size: 1.5rem;
+    color: #FFF;
+}
+
+.sidebar-logo {
+    margin: auto 0;
+}
+
+.sidebar-logo a {
+    color: #FFF;
+    font-size: 1.15rem;
+    font-weight: 600;
+}
+
+#sidebar:not(.expand) .sidebar-logo,
+#sidebar:not(.expand) a.sidebar-link span {
+    display: none;
+}
+
+.sidebar-nav {
+    padding: 2rem 0;
+    flex: 1 1 auto;
+}
+
+a.sidebar-link {
+    padding: .625rem 1.625rem;
+    color: #FFF;
+    display: block;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    border-left: 3px solid transparent;
+}
+
+.sidebar-link i {
+    font-size: 1.1rem;
+    margin-right: .75rem;
+}
+
+a.sidebar-link:hover {
+    background-color: rgba(255, 255, 255, .075);
+    border-left: 3px solid #3b7ddd;
+}
+
+.sidebar-item {
+    position: relative;
+}
+
+#sidebar:not(.expand) .sidebar-item .sidebar-dropdown {
+    position: absolute;
+    top: 0;
+    left: 70px;
+    background-color: #0e2238;
+    padding: 0;
+    min-width: 15rem;
+    display: none;
+}
+
+#sidebar:not(.expand) .sidebar-item:hover .has-dropdown+.sidebar-dropdown {
+    display: block;
+    max-height: 15em;
+    width: 100%;
+    opacity: 1;
+}
+
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"]::after {
+    border: solid;
+    border-width: 0 .075rem .075rem 0;
+    content: "";
+    display: inline-block;
+    padding: 2px;
+    position: absolute;
+    right: 1.5rem;
+    top: 1.4rem;
+    transform: rotate(-135deg);
+    transition: all .2s ease-out;
+}
+
+#sidebar.expand .sidebar-link[data-bs-toggle="collapse"].collapsed::after {
+    transform: rotate(45deg);
+    transition: all .2s ease-out;
+}
+
+.form-row, .toolbar-row, .plain-text-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 5px; /* Reduced margin for less spacing */
+}
+
+.form-row label {
+  flex-basis: 100px;
+  margin-right: 10px;
+}
+
+.form-row input, .form-row select {
+  flex: 1;
+  margin-right: 10px;
+  height: 25px; /* Reduce input field height */
+  padding: 2px 5px; /* Reduce padding */
+}
+
+.subject, .to{
+  width: 88em;
+}
+
+#charset {
+  width: 50rem; /* Increased width to accommodate more options */
+  height: 25px; /* Reduce select box height to match other form elements */
+}
+
+.tasks {
+  display: flex;
+  margin-left: 10px;
+  gap: 5px;
+}
+
+.tasks button {
+  /* margin-bottom: 5px;
+  height: 25px; Reduce button height */
+  padding: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  height: 20px;
+  /* width: 80px; */
+}
+
+/* button{
+  padding: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  height: 20px;
+} */
+
+.editor textarea {
+  width: 100%;
+  height: 20em; /* Reduce textarea height */
+  resize: vertical;
+  padding: 5px;
+}
+
+.plain-text-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.plainTextDiv{
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.plain-text-row textarea {
+  resize: vertical;
+  padding: 5px;
+  width: 100%;
+  height: 13em; /* Reduce height for the plain text area */
+}
+
+/* Modal background */
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed; /* Stay in place */
+  z-index: 1; /* Sit on top */
+  left: 0;
+  top: 0;
+  width: 100%; /* Full width */
+  height: 100%; /* Full height */
+  overflow: auto; /* Enable scroll if needed */
+  background-color: rgba(0, 0, 0, 0.4); /* Black background with opacity */
+}
+
+/* Modal content */
+.modal-content {
+  background-color: #fefefe;
+  margin: 10% auto; /* Adjusted for better centering */
+  padding: 20px;
+  border: 1px solid #888;
+  width: 70%; /* Adjusted width for better fit */
+}
+
+/* Close button */
+.close {
+  color: #aaa;
+  /* float: left; */
+  font-size: 28px;
+  font-weight: bold;
+  width: 50px;
+}
+
+.close:hover,
+.close:focus {
+  color: black;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+/* Ensure the fields container is displayed as a column and does not disturb other elements */
+.fields-container {
+  display: flex;
+  flex-direction: column; /* Display buttons in a column */
+  position: absolute; /* Avoid disturbing other elements */
+  background-color: #f9f9f9; /* Background color for better visibility */
+  border: 1px solid #ccc; /* Border for better distinction */
+  padding: 10px; /* Padding for spacing */
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2); /* Optional shadow for better appearance */
+  z-index: 1000; /* Ensure it appears above other content */
+  max-height: 200px; /* Limit height to avoid too much space */
+  overflow-y: auto; /* Add scroll if content exceeds max height */
+}
+
+/* Style for each button in the options */
+.field-option-button {
+  display: block;
+  margin: 5px 0;
+  padding: 5px;
+  border: 1px solid #ccc;
+  background-color: #f9f9f9;
+  cursor: pointer;
+}
+
+.field-option-button:hover {
+  background-color: #e0e0e0;
+}
+
+
+
+.dropdown-content {
+  display: none;
+  position: absolute;
+  background-color: white;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 1000;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dropdown-content li {
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.dropdown-content li:hover {
+  background-color: #f1f1f1;
+}
+
+.dropdown-show {
+  display: block;
+  top: 11px;
+  right: 27px;
+}
+
+/* Make CKEditor look disabled */
+.cke.disabled {
+  opacity: 0.5;
+  pointer-events: none; /* Prevent interaction */
+  position: relative; /* Required for the overlay */
+}
+
+/* Overlay for disabled state */
+.cke.disabled::after {
+  content: 'CKEditor Disabled';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.7); /* Semi-transparent overlay */
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: bold;
+  pointer-events: none; /* Prevent interaction with the overlay */
+}
