@@ -146,6 +146,22 @@ a.sidebar-link:hover {
     transition: all .2s ease-out;
 }
 
+/* Wrapping the table in a container to apply scroll */
+#tableContainer {
+    max-height: 400px; /* Set the max height you prefer for the table */
+    overflow-y: auto; /* This will make the table scrollable vertically */
+    width: 100%; /* Ensure it takes up full width */
+}
+
+/* Wrapping the table in a container to apply scroll */
+#tableContainer {
+    max-height: 400px;  /* Adjust to your desired height */
+    overflow-y: auto;   /* Vertical scroll when content exceeds the height */
+    overflow-x: hidden; /* Disable horizontal scroll */
+    width: 100%;
+}
+
+
 table {
     border-collapse: collapse;
     width: 100%;

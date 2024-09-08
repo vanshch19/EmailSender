@@ -1,0 +1,8 @@
+From maven:3.9.9-amazoncorretto-21-al2023 AS build
+COPY . .
+RUN mvn clean package -DskipTests
+
+FROM openjdk:24-slim-bullseye
+COPY --from=build /target/EmailSender1-0.0.1-SNAPSHOT.jar app.jar
+EXPOSE 8085
+ENTRYPOINT ["java","-jar","demo.jar"]

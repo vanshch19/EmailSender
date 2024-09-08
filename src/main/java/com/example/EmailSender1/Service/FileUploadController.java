@@ -30,14 +30,20 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import com.example.EmailSender1.Model.DomainEmails;
+import com.example.EmailSender1.Model.EmailConfig;
+import com.example.EmailSender1.Model.EmailDetails;
 import com.example.EmailSender1.Model.User;
 import com.example.EmailSender1.Repository.UserRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -68,10 +74,16 @@ public class FileUploadController {
     @Autowired
     private ThreadPoolTaskScheduler scheduler;
 
+    // @Autowired
+    // private UploadEmailService uploadEmailService; // Service to handle file processing
+
     private List<String> tableHeaders = new ArrayList<>();
 
     @Autowired
     private MongoTemplate mongoTemplate;
+
+    @Autowired
+    private MongoTemplate senderEmailsMongoTemplate; // For 'senderEmails' database
 
     @PostMapping("/upload")
     @ResponseBody
@@ -157,6 +169,57 @@ public class FileUploadController {
     }
 
 
+    @PostMapping("/uploademails")
+    public ResponseEntity<String> uploadFile(@RequestParam("file") MultipartFile file) {
+        try (InputStream is = file.getInputStream()) {
+            Workbook workbook = new XSSFWorkbook(is);
+            Sheet sheet = workbook.getSheetAt(0);
+
+            Map<String, DomainEmails> domainEmailsMap = new LinkedHashMap<>();
+            // System.out.println(domainEmailsMap);
+
+            for (Row row : sheet) {
+            if (row.getRowNum() == 0) continue; // Skip header row
+
+            String domainName = row.getCell(0).getStringCellValue();
+            String email = row.getCell(1).getStringCellValue();
+            String smtpServer = row.getCell(2).getStringCellValue();
+            String port = Integer.toString((int) row.getCell(3).getNumericCellValue());
+            String username = row.getCell(4).getStringCellValue();
+            String password = row.getCell(5).getStringCellValue();
+            boolean authenticationRequired = Boolean.parseBoolean(row.getCell(6).getStringCellValue());
+    
+            domainEmailsMap.computeIfAbsent(domainName, k -> new DomainEmails(domainName, new ArrayList<>(), smtpServer, port, username, password, authenticationRequired))
+                .getEmails().add(email);
+        }
+
+
+        
+            // Convert to a list and save to MongoDB
+            List<DomainEmails> domainEmailsList = new ArrayList<>(domainEmailsMap.values());
+            // System.out.println(domainEmailsList.toString());
+
+            // Save the data to the database
+            saveDomainEmails(domainEmailsList);
+            return ResponseEntity.ok("File uploaded and data processed successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to process file: " + e.getMessage());
+        }
+    }
+
+    private void saveDomainEmails(List<DomainEmails> domainEmailsList) {
+        try {
+            // Remove existing data and insert new one
+            senderEmailsMongoTemplate.dropCollection("SenderEmails");  // Drop the collection before inserting new data
+            senderEmailsMongoTemplate.insert(domainEmailsList, "SenderEmails");
+            System.out.println("Emails saved successfully.");
+        } catch (Exception e) {
+            System.err.println("Error saving emails: " + e.getMessage());
+        }
+    }
+
+
+
     @GetMapping("/collections/{collectionName}")
     public ResponseEntity<Map<String, Object>> getCollectionData(@PathVariable String collectionName) {
         Map<String, Object> response = new HashMap<>();
@@ -233,6 +296,7 @@ public class FileUploadController {
         return fetchedData;
     }
 
+
     private void extractTableHeaders(MultipartFile file, List<String> tableHeaders) throws IOException {
         try (Workbook workbook = WorkbookFactory.create(file.getInputStream())) {
             Sheet sheet = workbook.getSheetAt(0);
@@ -305,29 +369,31 @@ public class FileUploadController {
     }
 
 
-
     @SuppressWarnings("deprecation")
     @PostMapping("/send-email")
-    public ResponseEntity<String> sendEmail(@RequestBody JsonNode requestData) {
+    public ResponseEntity<Map<String, List<String>>> sendEmail(@RequestBody JsonNode requestData) {
+        List<String> sentEmails = new ArrayList<>();
+        List<String> failedEmails = new ArrayList<>();
+
         try {
-            // Extract data from request
+            // Extract data from the request
             String distributionList = requestData.get("distributionList").asText();
             String segmentList = requestData.get("segmentList").asText();
-            String senderEmail = requestData.get("senderEmail").asText();
+            String senderEmail = requestData.has("senderEmail") ? requestData.get("senderEmail").asText() : null;
             String senderName = requestData.get("senderName").asText();
             int sendInterval = requestData.has("sendInterval") ? requestData.get("sendInterval").asInt() : 0;
             String timeUnit = requestData.get("timeUnit").asText();
-            String smtpServer = requestData.get("smtpServer").asText();
-            boolean authenticationRequired = requestData.get("authenticationRequired").asBoolean();
-            String username = requestData.get("username").asText();
-            String password = requestData.get("password").asText();
-            String port = requestData.get("port").asText();
-            boolean ssl = requestData.get("ssl").asBoolean();
+            String smtpServer = requestData.has("smtpServer") ? requestData.get("smtpServer").asText() : null;
+            boolean authenticationRequired = requestData.has("authenticationRequired") ? requestData.get("authenticationRequired").asBoolean() : false;
+            String username = requestData.has("username") ? requestData.get("username").asText() : null;
+            String password = requestData.has("password") ? requestData.get("password").asText() : null;
+            String port = requestData.has("port") ? requestData.get("port").asText() : null;
+            boolean ssl = requestData.has("ssl") ? requestData.get("ssl").asBoolean() : false;
             String sendMode = requestData.get("sendMode").asText();
             String subject = requestData.get("subject").asText();
-            String messageText = requestData.get("message").asText(); 
+            String messageText = requestData.get("message").asText();
             String plainTextMessage = requestData.get("plainTextMessage").asText();
-            
+
             // Extract the 'to' array
             ArrayNode toArray = (ArrayNode) requestData.get("to");
             List<String> toEmails = new ArrayList<>();
@@ -337,42 +403,290 @@ public class FileUploadController {
                 }
             }
 
+            // Fetch domain data from DB
+            List<DomainEmails> domainEmailsList = fetchDomainEmailsFromDB();
+            // System.out.println(domainEmailsList.toString());
+
+            List<EmailDetails> emailDetailsObj = extractEmailDetailsInRoundRobin(domainEmailsList);
+            // System.out.println(emailDetailsObj);
+
+            // Prepare lists for sender emails and email configs
+            List<String> senderEmails = (senderEmail == null || senderEmail.isEmpty())
+                    ? extractEmailsFromRoundRobinEmailList(emailDetailsObj)
+                    : List.of(senderEmail);
+            List<EmailConfig> emailConfigs = ((smtpServer == null || smtpServer.isEmpty()) || (port == null || port.isEmpty()) || (username == null || username.isEmpty()) || (password == null || password.isEmpty()))
+                    ? extractEmailConfigs(emailDetailsObj)
+                    : List.of(new EmailConfig(smtpServer, port, username, password, authenticationRequired));
+
+            System.out.println(senderEmails);
+
             // Convert send interval to milliseconds
-            long intervalMillis;
-            switch (timeUnit) {
-                case "seconds":
-                    intervalMillis = sendInterval * 1000;
-                    break;
-                case "minutes":
-                    intervalMillis = sendInterval * 60000;
-                    break;
-                case "hours":
-                    intervalMillis = sendInterval * 3600000;
-                    break;
-                default:
-                    intervalMillis = 0;
-            }
+            long intervalMillis = convertToMilliseconds(sendInterval, timeUnit);
 
             // Schedule the email sending tasks
             long delayMillis = 0;
-            for (String email : toEmails) {
-                final String recipientEmail = email;
+            for (int i = 0; i < toEmails.size(); i++) {
+                String recipientEmail = toEmails.get(i);
+                String currentSenderEmail = senderEmails.get(i % senderEmails.size()); // Round-robin sender emails
+                EmailConfig emailConfig = emailConfigs.get(i % emailConfigs.size()); // Round-robin email config
+
+                // System.out.println(recipientEmail);
+                // System.out.println(currentSenderEmail);
+                
+                // Log configuration for debugging
+                System.out.println("Sending email with config: " + emailConfig.toString());
+
                 scheduler.schedule(() -> {
                     try {
-                        EmailSender.sendEmail(distributionList, segmentList, senderEmail, senderName, sendInterval, timeUnit, smtpServer, authenticationRequired, username, password, port, ssl, sendMode, List.of(recipientEmail), subject, messageText, plainTextMessage);
+                        // Send the email using the round-robin sender email and configuration
+                        EmailSender.sendEmail(
+                            distributionList, 
+                            segmentList, 
+                            currentSenderEmail,  // Pass the current sender email as a list
+                            senderName, 
+                            sendInterval, 
+                            timeUnit, 
+                            emailConfig.getSmtpServer(),
+                            emailConfig.isAuthenticationRequired(),
+                            // emailConfig.getUsername(),
+                            currentSenderEmail,
+                            emailConfig.getPassword(),
+                            emailConfig.getPort(),
+                            ssl, 
+                            sendMode, 
+                            List.of(recipientEmail), 
+                            subject, 
+                            messageText, 
+                            plainTextMessage,
+                            sentEmails, 
+                            failedEmails
+                        );
+
+                         // Log success
+                        // sentEmails.add("Sent message successfully to " + recipientEmail);
+
                     } catch (Exception e) {
-                        e.printStackTrace();
+                       // Log failure
+                        // failedEmails.add("Failed to send message to " + recipientEmail + " Because " + e.getMessage()); 
                     }
                 }, new Date(System.currentTimeMillis() + delayMillis));
                 delayMillis += intervalMillis;
             }
+            System.out.println(sentEmails);
+            System.out.println(failedEmails);
 
-            return ResponseEntity.ok("Emails scheduled successfully!");
+            // Prepare the result to be sent back to the frontend
+            Map<String, List<String>> result = new HashMap<>();
+            result.put("sentEmails", sentEmails);
+            result.put("failedEmails", failedEmails);
+
+            // return ResponseEntity.ok("Emails scheduled successfully!");
+            return ResponseEntity.ok(result);
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to schedule emails.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
+    private List<DomainEmails> fetchDomainEmailsFromDB() {
+        // Fetch all domain emails from the database
+        Query query = new Query();
+        List<DomainEmails> domainEmailsList = senderEmailsMongoTemplate.find(query, DomainEmails.class, "SenderEmails");
+
+        return domainEmailsList;
+    }
+
+
+    private List<EmailDetails> extractEmailDetailsInRoundRobin(List<DomainEmails> domainEmailsList) {
+        List<EmailDetails> emailDetailsList = new ArrayList<>();
+        boolean emailsRemaining = true;
+        int emailIndex = 0;
+
+        // Round-robin extraction of emails
+        while (emailsRemaining) {
+            emailsRemaining = false; // Assume no emails are remaining for this round
+
+            for (DomainEmails domainEmails : domainEmailsList) {
+                List<String> emails = domainEmails.getEmails();
+
+                // Check if there is an email at the current index
+                if (emailIndex < emails.size()) {
+                    String email = emails.get(emailIndex);
+
+                    // Create an EmailDetails object for each email with corresponding SMTP settings
+                    EmailDetails emailDetails = new EmailDetails(
+                        email,
+                        domainEmails.getSmtpServer(),
+                        domainEmails.getPort(),
+                        domainEmails.getUsername(),
+                        domainEmails.getPassword(),
+                        domainEmails.isAuthenticationRequired()
+                    );
+                    emailDetailsList.add(emailDetails);
+
+                    emailsRemaining = true; // There are still emails to process in the next round
+                }
+            }
+
+            emailIndex++; // Move to the next email index for the next round
+        }
+        // System.out.println(emailDetailsList);
+        return emailDetailsList;
+    }
+
+    private List<String> extractEmailsFromRoundRobinEmailList(List<EmailDetails> emailDetails){
+        List<String> emails = new ArrayList<>();
+        for(int i = 0;i<emailDetails.size();i++){
+            emails.add(emailDetails.get(i).getEmail());
+        }
+        return emails;
+    }
+
+
+    public List<EmailConfig> extractEmailConfigs(List<EmailDetails> emailDetailsList) {
+    List<EmailConfig> emailConfigList = new ArrayList<>();
+
+    for (EmailDetails emailDetail : emailDetailsList) {
+        String smtpServer = emailDetail.getSmtpServer();
+        String port = emailDetail.getPort();
+        String username = emailDetail.getUsername();
+        String password = emailDetail.getPassword();
+        boolean authenticationRequired = emailDetail.isAuthenticationRequired();
+
+        // Create EmailConfig object
+        EmailConfig emailConfig = new EmailConfig(smtpServer, port, username, password, authenticationRequired);
+
+        // Add the config to the list, preserving the order
+        emailConfigList.add(emailConfig);
+    }
+
+    return emailConfigList;
+}
+
+
+
+
+
+
+private Long convertToMilliseconds(int sendInterval, String timeUnit) {
+    long intervalMillis;
+    switch (timeUnit) {
+        case "seconds":
+            intervalMillis = sendInterval * 1000;
+            break;
+        case "minutes":
+            intervalMillis = sendInterval * 60000;
+            break;
+        case "hours":
+            intervalMillis = sendInterval * 3600000;
+            break;
+        default:
+            intervalMillis = 0;
+    }
+    return intervalMillis;
+}
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // @PostMapping("/send-email")
+    // public ResponseEntity<String> sendEmail(@RequestBody JsonNode requestData) {
+    //     try {
+    //         // Extract data from request
+    //         String distributionList = requestData.get("distributionList").asText();
+    //         String segmentList = requestData.get("segmentList").asText();
+    //         String senderEmail = requestData.get("senderEmail").asText();
+    //         String senderName = requestData.get("senderName").asText();
+    //         int sendInterval = requestData.has("sendInterval") ? requestData.get("sendInterval").asInt() : 0;
+    //         String timeUnit = requestData.get("timeUnit").asText();
+    //         String smtpServer = requestData.get("smtpServer").asText();
+    //         boolean authenticationRequired = requestData.get("authenticationRequired").asBoolean();
+    //         String username = requestData.get("username").asText();
+    //         String password = requestData.get("password").asText();
+    //         String port = requestData.get("port").asText();
+    //         boolean ssl = requestData.get("ssl").asBoolean();
+    //         String sendMode = requestData.get("sendMode").asText();
+    //         String subject = requestData.get("subject").asText();
+    //         String messageText = requestData.get("message").asText(); 
+    //         String plainTextMessage = requestData.get("plainTextMessage").asText();
+            
+    //         // Extract the 'to' array
+    //         ArrayNode toArray = (ArrayNode) requestData.get("to");
+    //         List<String> toEmails = new ArrayList<>();
+    //         if (toArray != null) {
+    //             for (JsonNode node : toArray) {
+    //                 toEmails.add(node.asText());
+    //             }
+    //         }
+
+    //         // Convert send interval to milliseconds
+    //         long intervalMillis;
+    //         switch (timeUnit) {
+    //             case "seconds":
+    //                 intervalMillis = sendInterval * 1000;
+    //                 break;
+    //             case "minutes":
+    //                 intervalMillis = sendInterval * 60000;
+    //                 break;
+    //             case "hours":
+    //                 intervalMillis = sendInterval * 3600000;
+    //                 break;
+    //             default:
+    //                 intervalMillis = 0;
+    //         }
+
+    //         // Schedule the email sending tasks
+    //         long delayMillis = 0;
+    //         for (String email : toEmails) {
+    //             final String recipientEmail = email;
+    //             scheduler.schedule(() -> {
+    //                 try {
+    //                     EmailSender.sendEmail(distributionList, segmentList, senderEmail, senderName, sendInterval, timeUnit, smtpServer, authenticationRequired, username, password, port, ssl, sendMode, List.of(recipientEmail), subject, messageText, plainTextMessage);
+    //                 } catch (Exception e) {
+    //                     e.printStackTrace();
+    //                 }
+    //             }, new Date(System.currentTimeMillis() + delayMillis));
+    //             delayMillis += intervalMillis;
+    //         }
+
+    //         return ResponseEntity.ok("Emails scheduled successfully!");
+    //     } catch (Exception e) {
+    //         e.printStackTrace();
+    //         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to schedule emails.");
+    //     }
+    // }
 
 
 
@@ -383,71 +697,4 @@ public class FileUploadController {
 
 
     
-//     @PostMapping("/send-email")
-//     public ResponseEntity<String> sendEmail(@RequestBody JsonNode requestData) {
-//         try {
-//             // Extract data from request
-//             String distributionList = requestData.get("distributionList").asText();
-//             String segmentList = requestData.get("segmentList").asText();
-//             String senderEmail = requestData.get("senderEmail").asText();
-//             String senderName = requestData.get("senderName").asText();
-//             int sendInterval = requestData.has("sendInterval") ? requestData.get("sendInterval").asInt() : 0;
-//             String timeUnit = requestData.get("timeUnit").asText();
-//             String smtpServer = requestData.get("smtpServer").asText();
-//             boolean authenticationRequired = requestData.get("authenticationRequired").asBoolean();
-//             String username = requestData.get("username").asText();
-//             String password = requestData.get("password").asText();
-//             String port = requestData.get("port").asText();
-//             boolean ssl = requestData.get("ssl").asBoolean();
-//             String sendMode = requestData.get("sendMode").asText();
-//             String subject = requestData.get("subject").asText();
-//             String messageText = requestData.get("message").asText(); 
-//             String plainTextMessage = requestData.get("plainTextMessage").asText();
-//             // Extract the 'to' array
-//                 ArrayNode toArray = (ArrayNode) requestData.get("to");
-//                 List<String> toEmails = new ArrayList<>();
-//                 if (toArray != null) {
-//                     for (JsonNode node : toArray) {
-//                         toEmails.add(node.asText());
-//                     }
-//                 }
-
-//                 System.out.println(sendInterval);
-//                 // // Data loading from local Storage 
-//                 // JsonNode composedData = requestData.get("composedData");
-
-//                 // System.out.println();
-
-//                 // Convert send interval to milliseconds
-//             long intervalMillis;
-//             switch (timeUnit) {
-//                 case "seconds":
-//                     intervalMillis = sendInterval * 1000;
-//                     break;
-//                 case "minutes":
-//                     intervalMillis = sendInterval * 60000;
-//                     break;
-//                 case "hours":
-//                     intervalMillis = sendInterval * 3600000;
-//                     break;
-//                 default:
-//                     intervalMillis = 0;
-//             }
-
-//              // Schedule the email sending task
-//             scheduler.scheduleAtFixedRate(() -> {
-//                 EmailSender.sendEmail(distributionList, segmentList, senderEmail, senderName, sendInterval, smtpServer, plainTextMessage, authenticationRequired, username, password, port, ssl, sendMode, toEmails, subject, messageText, plainTextMessage);
-//             }, 0, intervalMillis, TimeUnit.MILLISECONDS);
-
-
-//             // EmailSender.sendEmail(distributionList, segmentList, senderEmail, senderName, sendInterval, timeUnit, smtpServer, authenticationRequired, username, password, port, ssl, sendMode, toEmails, subject, messageText, plainTextMessage);
-
-//             return ResponseEntity.ok("Emails sent successfully!");
-//         } catch (Exception e) {
-//             e.printStackTrace();
-//             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to send emails.");
-//         }
-//     }
-}
-
 

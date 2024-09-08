@@ -11,10 +11,24 @@
 
     <!-- Include the navbar fragment -->
     <div th:replace="partials/navbar :: navbar"></div>
-
     
     <div class="container mt-4">
         <h1>Messages</h1>
+        
+        <!-- File upload form -->
+        <form id="uploadEmailsForm" enctype="multipart/form-data" method="post" th:action="@{/uploademails}">
+            <div class="mb-3">
+                <div class="d-flex">
+                    <div class="flex-grow-1 me-2">
+                        <label for="fileUpload" class="form-label">Upload Excel File:</label>
+                        <input type="file" id="fileUpload" name="file" class="form-control" accept=".xlsx, .xls">
+                    </div>
+                    <button type="submit" id="uploadButton" class="btn btn-success">Upload</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Main email form -->
         <form id="emailForm">
             <div class="mb-3">
                 <label for="distributionList" class="form-label">Select distribution list:</label>
@@ -31,11 +45,11 @@
             </div>
             <div class="mb-3">
                 <label for="senderEmail" class="form-label">Sender e-mail address:</label>
-                <input type="email" id="senderEmail" name="senderEmail" class="form-control" value="newsletter@testsendblaster.com">
+                <input type="email" id="senderEmail" name="senderEmail" class="form-control">
             </div>
             <div class="mb-3">
                 <label for="senderName" class="form-label">Sender name:</label>
-                <input type="text" id="senderName" name="senderName" class="form-control" value="Newsletter">
+                <input type="text" id="senderName" name="senderName" class="form-control">
             </div>
 
             <!-- Time Interval Input with Unit Selection -->
@@ -55,6 +69,7 @@
                 <button type="button" id="sendButton" class="btn btn-primary">Send</button>
                 <button type="button" class="btn btn-secondary">Send later...</button>
             </div>
+
             <h2>Send settings</h2>
             <div class="mb-3">
                 <div class="form-check">
@@ -65,7 +80,7 @@
                 </div>
                 <div class="mb-3">
                     <label for="smtpServer" class="form-label">SMTP server:</label>
-                    <input type="text" id="smtpServer" name="smtpServer" class="form-control" value="test.turbo-smtp.com">
+                    <input type="text" id="smtpServer" name="smtpServer" class="form-control">
                 </div>
                 <div class="mb-3 form-check">
                     <input class="form-check-input" type="checkbox" id="authenticationRequired" name="authenticationRequired">
@@ -75,15 +90,15 @@
                 </div>
                 <div class="mb-3">
                     <label for="username" class="form-label">Username:</label>
-                    <input type="text" id="username" name="username" class="form-control" value="demo">
+                    <input type="text" id="username" name="username" class="form-control">
                 </div>
                 <div class="mb-3">
                     <label for="password" class="form-label">Password:</label>
-                    <input type="password" id="password" name="password" class="form-control" value="password">
+                    <input type="password" id="password" name="password" class="form-control">
                 </div>
                 <div class="mb-3">
                     <label for="port" class="form-label">Port:</label>
-                    <input type="text" id="port" name="port" class="form-control" value="465">
+                    <input type="text" id="port" name="port" class="form-control">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="ssl" name="ssl" checked>
                         <label class="form-check-label" for="ssl">
@@ -102,7 +117,60 @@
         </form>
     </div>
 
+
+
     <!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-body text-center">
+          <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+          </div>
+          <p>Sending emails, please wait...</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Result Modal -->
+  <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="resultModalLabel">Email Sending Results</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6>Sent Emails:</h6>
+          <ul id="modal-sent-emails"></ul>
+          <h6>Failed Emails:</h6>
+          <ul id="modal-failed-emails"></ul>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    <!-- Loading Modal
     <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -115,10 +183,10 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> -->
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
-    <script th:src="@{/js/smtp.js}"></script>
+    <script th:src="@{/js/send.js}"></script>
 </body>
 </html>
