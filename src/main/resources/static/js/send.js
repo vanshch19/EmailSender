@@ -62,12 +62,72 @@ function displayArray(arr){
     console.log(arr);
 }
 
+// document.getElementById('sendButton').addEventListener('click', function () {
+//     // Show loading modal
+//     var loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+//     loadingModal.show();
+
+//     // Collect form data
+//     const form = document.getElementById('emailForm');
+//     const formData = new FormData(form);
+
+//     const composedData = JSON.parse(localStorage.getItem('compose'));    
+
+//     const data = {
+//         distributionList: formData.get('distributionList'),
+//         segmentList: formData.get('segmentList'),
+//         senderEmail: formData.get('senderEmail'),
+//         senderName: formData.get('senderName'),
+//         sendInterval: formData.get('sendInterval') || 0,
+//         timeUnit: formData.get('timeUnit'),
+//         smtpServer: formData.get('smtpServer'),
+//         authenticationRequired: formData.get('authenticationRequired') === 'on', // Check for 'on' as checkboxes submit 'on' when checked
+//         username: formData.get('username'),
+//         password: formData.get('password'),
+//         port: formData.get('port'),
+//         ssl: formData.get('ssl') === 'on', // Check for 'on' as checkboxes submit 'on' when checked
+//         sendMode: formData.get('sendMode'),
+//         subject: composedData.subject,
+//         message: composedData.message,
+//         plainTextMessage: composedData.plainTextMessage,
+//         to: composedData.to
+//     };
+
+//     // Make an API call to send the email
+//     axios.post('/sendemailsToA', data)
+//         .then(response => {
+//             // Hide loading modal
+//             loadingModal.hide();
+            
+//             // Show result modal
+//             displayResultModal(response.data);
+//         })
+//         .catch(error => {
+//             // Hide loading modal
+//             loadingModal.hide();
+//             console.error('Error sending emails:', error);
+//         });
+
+
+//         // Handle the Cancel button click
+//     document.getElementById('cancelButton').addEventListener('click', function () {
+//         axios.post('/cancel-email-sending')
+//             .then(response => {
+//                 // Hide the modal and show a cancel success message
+//                 loadingModal.hide();
+//                 // alert("Email sending process has been cancelled.");
+//             })
+//             .catch(error => {
+//                 console.error('Error cancelling emails:', error);
+//             });
+//     });
+// });
+
+
 document.getElementById('sendButton').addEventListener('click', function () {
-    // Show loading modal
     var loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     loadingModal.show();
 
-    // Collect form data
     const form = document.getElementById('emailForm');
     const formData = new FormData(form);
 
@@ -81,11 +141,11 @@ document.getElementById('sendButton').addEventListener('click', function () {
         sendInterval: formData.get('sendInterval') || 0,
         timeUnit: formData.get('timeUnit'),
         smtpServer: formData.get('smtpServer'),
-        authenticationRequired: formData.get('authenticationRequired') === 'on', // Check for 'on' as checkboxes submit 'on' when checked
+        authenticationRequired: formData.get('authenticationRequired') === 'on',
         username: formData.get('username'),
         password: formData.get('password'),
         port: formData.get('port'),
-        ssl: formData.get('ssl') === 'on', // Check for 'on' as checkboxes submit 'on' when checked
+        ssl: formData.get('ssl') === 'on',
         sendMode: formData.get('sendMode'),
         subject: composedData.subject,
         message: composedData.message,
@@ -93,21 +153,47 @@ document.getElementById('sendButton').addEventListener('click', function () {
         to: composedData.to
     };
 
+    let cancelRequested = false;
+    let cancelRequest = null;
+
     // Make an API call to send the email
-    axios.post('/sendemailsToA', data)
-        .then(response => {
-            // Hide loading modal
-            loadingModal.hide();
-            
-            // Show result modal
-            displayResultModal(response.data);
-        })
-        .catch(error => {
-            // Hide loading modal
-            loadingModal.hide();
-            console.error('Error sending emails:', error);
-        });
+    const request = axios.post('/sendemailsToA', data);
+
+    // Handle cancel button click
+    document.getElementById('cancelButton').addEventListener('click', function () {
+        if (cancelRequested) return; // Prevent multiple clicks
+        cancelRequested = true;
+
+        // Cancel the ongoing request
+        if (cancelRequest) {
+            cancelRequest.cancel('Request canceled by the user.');
+        }
+
+        axios.post('/cancel-email-sending')
+            .then(response => {
+                loadingModal.hide();
+                displayResultModal(response.data);
+            })
+            .catch(error => {
+                console.error('Error cancelling emails:', error);
+                alert("Failed to cancel the email sending process.");
+            });
+    });
+
+    // Handle the original request response
+    request.then(response => {
+        if (cancelRequested) return; // Ignore if canceled
+
+        loadingModal.hide();
+        displayResultModal(response.data);
+    }).catch(error => {
+        if (cancelRequested) return; // Ignore if canceled
+
+        loadingModal.hide();
+        console.error('Error sending emails:', error);
+    });
 });
+
 
 function displayResultModal(result) {
     const sentEmails = result.sentEmails || [];

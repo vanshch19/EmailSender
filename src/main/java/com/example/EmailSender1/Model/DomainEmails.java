@@ -9,12 +9,12 @@ public class DomainEmails {
     private String smtpServer;
     private String port;
     private String username;
-    private String password;
+    private List<String> password;
     private boolean authenticationRequired;
 
     // Parameterized constructor
     public DomainEmails(String domainName, List<String> emails, String smtpServer, String port, 
-                        String username, String password, boolean authenticationRequired) {
+                        String username, List<String> password, boolean authenticationRequired) {
         this.domainName = domainName;
         this.emails = emails;
         this.smtpServer = smtpServer;
@@ -66,11 +66,11 @@ public class DomainEmails {
         this.username = username;
     }
 
-    public String getPassword() {
+    public List<String> getPassword() {
         return password;
     }
 
-    public void setPassword(String password) {
+    public void setPassword(List<String> password) {
         this.password = password;
     }
 

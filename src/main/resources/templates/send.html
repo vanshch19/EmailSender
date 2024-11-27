@@ -122,16 +122,18 @@
     <!-- Loading Modal -->
 <div class="modal fade" id="loadingModal" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog">
-      <div class="modal-content">
-        <div class="modal-body text-center">
-          <div class="spinner-border" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-          <p>Sending emails, please wait...</p>
+        <div class="modal-content">
+            <div class="modal-body text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Sending emails, please wait...</p>
+                <button id="cancelButton" class="btn btn-danger">Cancel</button> <!-- Cancel button -->
+            </div>
         </div>
-      </div>
     </div>
-  </div>
+</div>
+
   
   <!-- Result Modal -->
   <div class="modal fade" id="resultModal" tabindex="-1" aria-labelledby="resultModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">

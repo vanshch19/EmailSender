@@ -21,6 +21,15 @@ public class EmailSender {
                                  List<String> to, String subject, String messageText, String plainTextMessage,
                                  List<String> sentEmails, List<String> failedEmails) { // Accept lists
 
+                                    if (username == null || password == null) {
+                                        System.out.println("Username or password is null.");
+                                    } else {
+                                        System.out.println("Username: " + username);
+                                        System.out.println("Password: " + password);
+                                    }
+                                    
+
+
         // Set up the SMTP properties
         Properties props = new Properties();
         props.put("mail.smtp.auth", authenticationRequired ? "true" : "false");

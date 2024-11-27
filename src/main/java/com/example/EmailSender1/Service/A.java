@@ -1,10 +1,16 @@
 package com.example.EmailSender1.Service;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -14,6 +20,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.example.EmailSender1.Model.DomainEmails;
@@ -77,21 +84,34 @@ public class A {
             List<EmailDetails> emailDetailsObj = extractEmailDetailsInRoundRobin(domainEmailsList);
             // System.out.println(emailDetailsObj);
 
-            // Prepare lists for sender emails and email configs
-            List<String> senderEmails = (senderEmail == null || senderEmail.isEmpty())
-                    ? extractEmailsFromRoundRobinEmailList(emailDetailsObj)
-                    : List.of(senderEmail);
-            List<EmailConfig> emailConfigs = ((smtpServer == null || smtpServer.isEmpty()) || (port == null || port.isEmpty()) || (username == null || username.isEmpty()) || (password == null || password.isEmpty()))
-                    ? extractEmailConfigs(emailDetailsObj)
-                    : List.of(new EmailConfig(smtpServer, port, username, password, authenticationRequired));
+           
 
-            System.out.println(senderEmails);
+    // Prepare lists for sender emails and email configs
+    List<String> senderEmails = (senderEmail == null || senderEmail.isEmpty())
+            ? extractEmailFromRoundRobinEmailList(extractEmailDetailsInRoundRobin(domainEmailsList))
+            : List.of(senderEmail);
+
+            // System.out.println(senderEmails);
+            // System.out.println(senderEmails.size());
+
+    List<String> senderPasswords = (password == null || password.isEmpty())
+            ? extractPasswordFromRoundRobinEmailList(extractEmailDetailsInRoundRobin(domainEmailsList))
+            : List.of(password);
+
+            // System.out.println(senderPasswords);
+            // System.out.println(senderPasswords.size());
+
+    List<EmailConfig> emailConfigs = ((smtpServer == null || smtpServer.isEmpty()) || (port == null || port.isEmpty()) || (username == null || username.isEmpty()) || (password == null || password.isEmpty()))
+            ? extractEmailConfigs(extractEmailDetailsInRoundRobin(domainEmailsList))
+            : List.of(new EmailConfig(smtpServer, port, username, authenticationRequired));
 
             Map<String, List<String>> result = new HashMap<>();
+
             try {
                         // Send the email using the round-robin sender email and configuration
                         result = emailService.sendEmail( 
-                            senderEmails,  
+                            senderEmails,
+                            senderPasswords,
                             senderName, 
                             sendInterval, 
                             timeUnit, 
@@ -105,30 +125,33 @@ public class A {
                             sentEmails, 
                             failedEmails
                         );
-                        
-                         // Log success
+
+                    // Log success
                         // sentEmails.add("Sent message successfully to " + recipientEmail);
 
                     } catch (Exception e) {
-                       // Log failure
-                        // failedEmails.add("Failed to send message to " + recipientEmail + " Because " + e.getMessage()); 
-                    }
+                        // Log failure
+                         // failedEmails.add("Failed to send message to " + recipientEmail + " Because " + e.getMessage()); 
+                     }
+ 
+             System.out.println(result);
+ 
+            //  return ResponseEntity.ok("Emails scheduled successfully!");
+             return ResponseEntity.ok(result);
+         } catch (Exception e) {
+             e.printStackTrace();
+             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+         }
+     }
 
-            System.out.println(result);
 
-            // return ResponseEntity.ok("Emails scheduled successfully!");
-            return ResponseEntity.ok(result);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
-        }
-    }
 
     private List<DomainEmails> fetchDomainEmailsFromDB() {
         // Fetch all domain emails from the database
         Query query = new Query();
         List<DomainEmails> domainEmailsList = senderEmailsMongoTemplate.find(query, DomainEmails.class, "SenderEmails");
 
+        // System.out.println(domainEmailsList);
         return domainEmailsList;
     }
 
@@ -144,10 +167,12 @@ public class A {
 
             for (DomainEmails domainEmails : domainEmailsList) {
                 List<String> emails = domainEmails.getEmails();
+                List<String> passwordList = domainEmails.getPassword();
 
                 // Check if there is an email at the current index
                 if (emailIndex < emails.size()) {
                     String email = emails.get(emailIndex);
+                    String password = passwordList.get(emailIndex);
 
                     // Create an EmailDetails object for each email with corresponding SMTP settings
                     EmailDetails emailDetails = new EmailDetails(
@@ -155,7 +180,8 @@ public class A {
                         domainEmails.getSmtpServer(),
                         domainEmails.getPort(),
                         domainEmails.getUsername(),
-                        domainEmails.getPassword(),
+                        password,
+                        // domainEmails.getPassword(),
                         domainEmails.isAuthenticationRequired()
                     );
                     emailDetailsList.add(emailDetails);
@@ -170,12 +196,22 @@ public class A {
         return emailDetailsList;
     }
 
-    private List<String> extractEmailsFromRoundRobinEmailList(List<EmailDetails> emailDetails){
+    private List<String> extractEmailFromRoundRobinEmailList(List<EmailDetails> emailDetails){
         List<String> emails = new ArrayList<>();
         for(int i = 0;i<emailDetails.size();i++){
             emails.add(emailDetails.get(i).getEmail());
         }
+        // System.out.println(emails);
         return emails;
+    }
+
+    private List<String> extractPasswordFromRoundRobinEmailList(List<EmailDetails> emailDetails){
+        List<String> passwords = new ArrayList<>();
+        for(int i = 0;i<emailDetails.size();i++){
+            passwords.add(emailDetails.get(i).getPassword());
+        }
+        // System.out.println(emails);
+        return passwords;
     }
 
 
@@ -190,12 +226,12 @@ public class A {
         boolean authenticationRequired = emailDetail.isAuthenticationRequired();
 
         // Create EmailConfig object
-        EmailConfig emailConfig = new EmailConfig(smtpServer, port, username, password, authenticationRequired);
+        EmailConfig emailConfig = new EmailConfig(smtpServer, port, username, authenticationRequired);
 
         // Add the config to the list, preserving the order
         emailConfigList.add(emailConfig);
     }
-
+    // System.out.println(emailConfigList);
     return emailConfigList;
 }
 

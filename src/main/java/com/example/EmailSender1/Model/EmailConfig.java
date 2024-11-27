@@ -4,15 +4,15 @@ public class EmailConfig {
     private String smtpServer;
     private String port;
     private String username;
-    private String password;
+    // private String password;
     private boolean authenticationRequired;
 
     // Constructor, getters, and setters
-    public EmailConfig(String smtpServer, String port, String username, String password, boolean authenticationRequired) {
+    public EmailConfig(String smtpServer, String port, String username, boolean authenticationRequired) {
         this.smtpServer = smtpServer;
         this.port = port;
         this.username = username;
-        this.password = password;
+        // this.password = password;
         this.authenticationRequired = authenticationRequired;
     }
 
@@ -28,9 +28,9 @@ public class EmailConfig {
         return username;
     }
 
-    public String getPassword() {
-        return password;
-    }
+    // public String getPassword() {
+    //     return password;
+    // }
 
     public boolean isAuthenticationRequired() {
         return authenticationRequired;
@@ -42,7 +42,7 @@ public class EmailConfig {
                 "smtpServer='" + smtpServer + '\'' +
                 ", port='" + port + '\'' +
                 ", username='" + username + '\'' +
-                ", password='" + (password != null ? "****" : null) + '\'' +
+                // ", password='" + (password != null ? "****" : null) + '\'' +
                 ", authenticationRequired=" + authenticationRequired +
                 '}';
     }

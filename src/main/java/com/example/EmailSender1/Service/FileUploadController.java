@@ -179,19 +179,27 @@ public class FileUploadController {
             // System.out.println(domainEmailsMap);
 
             for (Row row : sheet) {
-            if (row.getRowNum() == 0) continue; // Skip header row
-
-            String domainName = row.getCell(0).getStringCellValue();
-            String email = row.getCell(1).getStringCellValue();
-            String smtpServer = row.getCell(2).getStringCellValue();
-            String port = Integer.toString((int) row.getCell(3).getNumericCellValue());
-            String username = row.getCell(4).getStringCellValue();
-            String password = row.getCell(5).getStringCellValue();
-            boolean authenticationRequired = Boolean.parseBoolean(row.getCell(6).getStringCellValue());
-    
-            domainEmailsMap.computeIfAbsent(domainName, k -> new DomainEmails(domainName, new ArrayList<>(), smtpServer, port, username, password, authenticationRequired))
-                .getEmails().add(email);
-        }
+                if (row.getRowNum() == 0) continue; // Skip header row
+            
+                String domainName = row.getCell(0).getStringCellValue();
+                String email = row.getCell(1).getStringCellValue();
+                String smtpServer = row.getCell(2).getStringCellValue();
+                String port = Integer.toString((int) row.getCell(3).getNumericCellValue());
+                String username = row.getCell(4).getStringCellValue();
+                String password = row.getCell(5).getStringCellValue();
+                boolean authenticationRequired = Boolean.parseBoolean(row.getCell(6).getStringCellValue());
+            
+                // Retrieve or create the DomainEmails object
+                DomainEmails domainEmails = domainEmailsMap.computeIfAbsent(
+                    domainName, 
+                    k -> new DomainEmails(domainName, new ArrayList<>(), smtpServer, port, username, new ArrayList<>(), authenticationRequired)
+                );
+            
+                // Add email and password to their respective lists
+                domainEmails.getEmails().add(email);
+                domainEmails.getPassword().add(password);
+            }
+            
 
 
         
@@ -416,9 +424,11 @@ public class FileUploadController {
                     : List.of(senderEmail);
             List<EmailConfig> emailConfigs = ((smtpServer == null || smtpServer.isEmpty()) || (port == null || port.isEmpty()) || (username == null || username.isEmpty()) || (password == null || password.isEmpty()))
                     ? extractEmailConfigs(emailDetailsObj)
-                    : List.of(new EmailConfig(smtpServer, port, username, password, authenticationRequired));
+                    : List.of(new EmailConfig(smtpServer, port, username,authenticationRequired));
 
-            System.out.println(senderEmails);
+            // System.out.println("senderEmails" + senderEmails);
+
+            // System.out.println("emailConfigs" + emailConfigs);
 
             // Convert send interval to milliseconds
             long intervalMillis = convertToMilliseconds(sendInterval, timeUnit);
@@ -432,45 +442,47 @@ public class FileUploadController {
 
                 // System.out.println(recipientEmail);
                 // System.out.println(currentSenderEmail);
+                // System.out.println("username : " + emailConfig.getUsername() + " pass :" + emailConfig.getPassword());
+                // System.out.println(emailConfig.getPassword());
                 
                 // Log configuration for debugging
-                System.out.println("Sending email with config: " + emailConfig.toString());
+                // System.out.println("Sending email with config: " + emailConfig.toString());
 
-                scheduler.schedule(() -> {
-                    try {
-                        // Send the email using the round-robin sender email and configuration
-                        EmailSender.sendEmail(
-                            distributionList, 
-                            segmentList, 
-                            currentSenderEmail,  // Pass the current sender email as a list
-                            senderName, 
-                            sendInterval, 
-                            timeUnit, 
-                            emailConfig.getSmtpServer(),
-                            emailConfig.isAuthenticationRequired(),
-                            // emailConfig.getUsername(),
-                            currentSenderEmail,
-                            emailConfig.getPassword(),
-                            emailConfig.getPort(),
-                            ssl, 
-                            sendMode, 
-                            List.of(recipientEmail), 
-                            subject, 
-                            messageText, 
-                            plainTextMessage,
-                            sentEmails, 
-                            failedEmails
-                        );
+                // scheduler.schedule(() -> {
+                //     try {
+                //         // Send the email using the round-robin sender email and configuration
+                //         EmailSender.sendEmail(
+                //             distributionList, 
+                //             segmentList, 
+                //             currentSenderEmail,  // Pass the current sender email as a list
+                //             senderName, 
+                //             sendInterval, 
+                //             timeUnit, 
+                //             emailConfig.getSmtpServer(),
+                //             emailConfig.isAuthenticationRequired(),
+                //             // emailConfig.getUsername(),
+                //             currentSenderEmail,
+                //             emailConfig.getPassword(),
+                //             emailConfig.getPort(),
+                //             ssl, 
+                //             sendMode, 
+                //             List.of(recipientEmail), 
+                //             subject, 
+                //             messageText, 
+                //             plainTextMessage,
+                //             sentEmails, 
+                //             failedEmails
+                //         );
 
-                         // Log success
-                        // sentEmails.add("Sent message successfully to " + recipientEmail);
+                //          // Log success
+                //         // sentEmails.add("Sent message successfully to " + recipientEmail);
 
-                    } catch (Exception e) {
-                       // Log failure
-                        // failedEmails.add("Failed to send message to " + recipientEmail + " Because " + e.getMessage()); 
-                    }
-                }, new Date(System.currentTimeMillis() + delayMillis));
-                delayMillis += intervalMillis;
+                //     } catch (Exception e) {
+                //        // Log failure
+                //         // failedEmails.add("Failed to send message to " + recipientEmail + " Because " + e.getMessage()); 
+                //     }
+                // }, new Date(System.currentTimeMillis() + delayMillis));
+                // delayMillis += intervalMillis;
             }
             System.out.println(sentEmails);
             System.out.println(failedEmails);
@@ -508,10 +520,12 @@ public class FileUploadController {
 
             for (DomainEmails domainEmails : domainEmailsList) {
                 List<String> emails = domainEmails.getEmails();
+                List<String> passwordList = domainEmails.getPassword();
 
                 // Check if there is an email at the current index
                 if (emailIndex < emails.size()) {
                     String email = emails.get(emailIndex);
+                    String password = passwordList.get(emailIndex);
 
                     // Create an EmailDetails object for each email with corresponding SMTP settings
                     EmailDetails emailDetails = new EmailDetails(
@@ -519,7 +533,8 @@ public class FileUploadController {
                         domainEmails.getSmtpServer(),
                         domainEmails.getPort(),
                         domainEmails.getUsername(),
-                        domainEmails.getPassword(),
+                        password,
+                        // domainEmails.getPassword(),
                         domainEmails.isAuthenticationRequired()
                     );
                     emailDetailsList.add(emailDetails);
@@ -554,12 +569,13 @@ public class FileUploadController {
         boolean authenticationRequired = emailDetail.isAuthenticationRequired();
 
         // Create EmailConfig object
-        EmailConfig emailConfig = new EmailConfig(smtpServer, port, username, password, authenticationRequired);
+        EmailConfig emailConfig = new EmailConfig(smtpServer, port, username, authenticationRequired);
 
         // Add the config to the list, preserving the order
         emailConfigList.add(emailConfig);
     }
 
+    // System.out.println(emailConfigList);
     return emailConfigList;
 }
 
